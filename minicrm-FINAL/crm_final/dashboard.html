@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini CRM – Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">⚡ Mini<span>CRM</span></div>
+  <a class="nav-link active" href="dashboard.html">📊 Dashboard</a>
+  <a class="nav-link" href="leads.html">👥 Leads</a>
+  <a class="nav-link" href="analytics.html">📈 Analytics</a>
+  <a class="nav-link" href="settings.html">⚙️ Settings</a>
+  <div class="sidebar-spacer"></div>
+  <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="main">
+
+  <div class="welcome">
+    <div class="page-title">Welcome back, <span id="userName">Admin</span> 👋</div>
+    <div class="page-sub">Monitor your leads, sales performance and CRM activity.</div>
+    <div class="clock" id="clock">--:--:-- --</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="grid grid-4">
+    <div class="card"><div class="card-label">Total Leads</div><div class="card-value" id="totalLeads" style="color:var(--purple-lt)">—</div></div>
+    <div class="card"><div class="card-label">New Leads</div><div class="card-value" id="newLeads" style="color:#60a5fa">—</div></div>
+    <div class="card"><div class="card-label">Contacted</div><div class="card-value" id="contactedLeads" style="color:#fcd34d">—</div></div>
+    <div class="card"><div class="card-label">Converted</div><div class="card-value" id="convertedLeads" style="color:#4ade80">—</div></div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="card-label">➕ Add Lead</div>
+      <div class="card-sub">Create a new lead instantly.</div>
+      <br><a href="leads.html" class="btn btn-primary">Open Leads</a>
+    </div>
+    <div class="card">
+      <div class="card-label">📈 Analytics</div>
+      <div class="card-sub">View business reports.</div>
+      <br><a href="analytics.html" class="btn btn-success">Open Analytics</a>
+    </div>
+    <div class="card">
+      <div class="card-label">⚙️ Settings</div>
+      <div class="card-sub">Manage your account.</div>
+      <br><a href="settings.html" class="btn btn-primary">Open Settings</a>
+    </div>
+  </div>
+
+  <!-- RECENT LEADS -->
+  <div class="table-wrap">
+    <div class="table-head">
+      <span class="table-head-title">Recent Leads</span>
+      <a href="leads.html" style="color:var(--purple-lt);font-size:.82rem;text-decoration:none;font-weight:600;">View All →</a>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Source</th></tr></thead>
+      <tbody id="recentLeads">
+        <tr><td colspan="4" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- STATUS -->
+  <div class="grid grid-4">
+    <div class="card"><div class="card-label">CRM Status</div><div class="card-value" style="font-size:1.2rem">🟢 Active</div></div>
+    <div class="card"><div class="card-label">Database</div><div class="card-value" style="font-size:1.2rem">🍃 MongoDB</div></div>
+    <div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:1.2rem">🚀 Express</div></div>
+    <div class="card"><div class="card-label">Analytics</div><div class="card-value" style="font-size:1.2rem">📊 Live</div></div>
+  </div>
+
+  <div class="footer">Mini CRM Professional © 2026</div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+  /* ── AUTH ── */
+  requireAuth();
+
+  /* ── USERNAME ── */
+  var uname = localStorage.getItem("userName");
+  document.getElementById("userName").innerText = uname || "Admin";
+
+  /* ── CLOCK (start immediately) ── */
+  function tickClock() {
+    document.getElementById("clock").innerText =
+      new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ── LOAD DATA ── */
+  fetch(API_BASE + "/leads")
+    .then(function (r) { return r.json(); })
+    .then(function (leads) {
+      /* stats */
+      var n=0,c=0,cv=0;
+      leads.forEach(function(l){
+        if(l.status==="New") n++;
+        if(l.status==="Contacted") c++;
+        if(l.status==="Converted") cv++;
+      });
+      document.getElementById("totalLeads").innerText     = leads.length;
+      document.getElementById("newLeads").innerText       = n;
+      document.getElementById("contactedLeads").innerText = c;
+      document.getElementById("convertedLeads").innerText = cv;
+
+      /* recent table */
+      var tb = document.getElementById("recentLeads");
+      if (!leads.length) {
+        tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:26px">No leads yet. <a href="leads.html" style="color:var(--purple-lt)">Add your first →</a></td></tr>';
+        return;
+      }
+      tb.innerHTML = "";
+      leads.slice(0,6).forEach(function(l){
+        tb.innerHTML += "<tr><td style='font-weight:500'>" + l.name +
+          "</td><td style='color:var(--muted)'>" + l.email +
+          "</td><td><span class='" + badgeClass(l.status) + "'>" + l.status + "</span></td>" +
+          "<td style='color:var(--muted)'>" + (l.source||"—") + "</td></tr>";
+      });
+    })
+    .catch(function(){
+      ["totalLeads","newLeads","contactedLeads","convertedLeads"].forEach(function(id){ document.getElementById(id).innerText="0"; });
+      document.getElementById("recentLeads").innerHTML =
+        '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:26px">⚠️ Backend offline — start server on port 5000</td></tr>';
+    });
+</script>
+</body>
+</html>

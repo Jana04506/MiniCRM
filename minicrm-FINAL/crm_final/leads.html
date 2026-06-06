@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini CRM – Leads</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">⚡ Mini<span>CRM</span></div>
+  <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+  <a class="nav-link active" href="leads.html">👥 Leads</a>
+  <a class="nav-link" href="analytics.html">📈 Analytics</a>
+  <a class="nav-link" href="settings.html">⚙️ Settings</a>
+  <div class="sidebar-spacer"></div>
+  <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="main">
+
+  <div class="welcome">
+    <div class="page-title">Lead Management</div>
+    <div class="page-sub">Manage, track and convert your leads efficiently.</div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card"><div class="card-label">Total Leads</div><div class="card-value" id="leadCount" style="color:var(--purple-lt)">—</div></div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;">
+      <div class="card-label">Quick Add</div>
+      <div><button class="btn btn-primary" onclick="openAdd()">＋ New Lead</button></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="🔍 Search by name or email…" oninput="applyFilter()">
+      <select id="statusFilter" onchange="applyFilter()">
+        <option value="">All Status</option>
+        <option value="New">New</option>
+        <option value="Contacted">Contacted</option>
+        <option value="Converted">Converted</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Source</th><th>Actions</th></tr></thead>
+      <tbody id="leadTable">
+        <tr><td colspan="5" style="text-align:center;padding:30px"><div class="spinner"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ADD MODAL -->
+<div id="addModal" class="modal-bg hidden" onclick="closeOnBg(event,'addModal')">
+  <div class="modal-box">
+    <h2>Add New Lead</h2>
+    <input id="aName"   placeholder="Full Name *">
+    <input id="aEmail"  placeholder="Email Address *" type="email">
+    <input id="aSource" placeholder="Source (e.g. Website, Referral)">
+    <input id="aNotes"  placeholder="Notes">
+    <select id="aStatus"><option>New</option><option>Contacted</option><option>Converted</option></select>
+    <div class="modal-actions">
+      <button class="btn btn-primary"  onclick="saveLead()">Save Lead</button>
+      <button class="btn btn-danger"   onclick="closeAdd()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div id="viewModal" class="modal-bg hidden" onclick="closeOnBg(event,'viewModal')">
+  <div class="modal-box">
+    <h2>Lead Details</h2>
+    <div id="viewBody" class="detail-row"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="closeView()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+  requireAuth();
+
+  var allLeads = [];
+
+  /* ── LOAD ── */
+  function loadLeads() {
+    fetch(API_BASE + "/leads")
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        allLeads = data;
+        document.getElementById("leadCount").innerText = data.length;
+        applyFilter();
+      })
+      .catch(function(){
+        showToast("Backend offline — start server on port 5000","error");
+        document.getElementById("leadTable").innerHTML =
+          '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:26px">⚠️ Backend offline</td></tr>';
+      });
+  }
+
+  /* ── RENDER ── */
+  function applyFilter() {
+    var q  = document.getElementById("searchInput").value.toLowerCase();
+    var sf = document.getElementById("statusFilter").value;
+    var list = allLeads.filter(function(l){
+      var match = l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q);
+      return match && (!sf || l.status === sf);
+    });
+    renderLeads(list);
+  }
+
+  function renderLeads(list) {
+    var tb = document.getElementById("leadTable");
+    if (!list.length) {
+      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:26px">No leads found.</td></tr>';
+      return;
+    }
+    tb.innerHTML = "";
+    list.forEach(function(l){
+      tb.innerHTML +=
+        "<tr>" +
+        "<td style='font-weight:500'>" + l.name + "</td>" +
+        "<td style='color:var(--muted)'>" + l.email + "</td>" +
+        "<td><span class='" + badgeClass(l.status) + "'>" + l.status + "</span></td>" +
+        "<td style='color:var(--muted)'>" + (l.source||"—") + "</td>" +
+        "<td style='white-space:nowrap'>" +
+          "<button class='btn btn-primary btn-sm' onclick='viewLead(\""+l._id+"\")'>View</button> " +
+          "<button class='btn btn-warn btn-sm'    onclick='editLead(\""+l._id+"\")'>Edit</button> " +
+          "<button class='btn btn-danger btn-sm'  onclick='deleteLead(\""+l._id+"\")'>Delete</button>" +
+        "</td></tr>";
+    });
+  }
+
+  /* ── ADD MODAL ── */
+  function openAdd(){
+    ["aName","aEmail","aSource","aNotes"].forEach(function(id){document.getElementById(id).value="";});
+    document.getElementById("aStatus").value="New";
+    document.getElementById("addModal").classList.remove("hidden");
+  }
+  function closeAdd(){ document.getElementById("addModal").classList.add("hidden"); }
+
+  function saveLead(){
+    var name  = document.getElementById("aName").value.trim();
+    var email = document.getElementById("aEmail").value.trim();
+    if(!name||!email){showToast("Name & Email required","error");return;}
+    fetch(API_BASE+"/leads",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name:name,
+        email:email,
+        source:document.getElementById("aSource").value.trim(),
+        notes:document.getElementById("aNotes").value.trim(),
+        status:document.getElementById("aStatus").value
+      })
+    })
+    .then(function(r){
+      if(!r.ok) throw new Error("fail");
+      closeAdd(); loadLeads(); showToast("Lead Added ✓");
+    })
+    .catch(function(){ showToast("Failed to add lead","error"); });
+  }
+
+  /* ── DELETE ── */
+  function deleteLead(id){
+    if(!confirm("Delete this lead? Cannot be undone.")) return;
+    fetch(API_BASE+"/leads/"+id,{method:"DELETE"})
+      .then(function(){ loadLeads(); showToast("Lead Deleted"); })
+      .catch(function(){ showToast("Delete failed","error"); });
+  }
+
+  /* ── VIEW ── */
+  function viewLead(id){
+    var l = allLeads.find(function(x){return x._id===id;});
+    if(!l) return;
+    document.getElementById("viewBody").innerHTML =
+      "<div class='detail-item'><span class='detail-lbl'>Name</span><span class='detail-val'>"+l.name+"</span></div>" +
+      "<div class='detail-item'><span class='detail-lbl'>Email</span><span class='detail-val'>"+l.email+"</span></div>" +
+      "<div class='detail-item'><span class='detail-lbl'>Status</span><span class='detail-val'><span class='"+badgeClass(l.status)+"'>"+l.status+"</span></span></div>" +
+      "<div class='detail-item'><span class='detail-lbl'>Source</span><span class='detail-val'>"+(l.source||"—")+"</span></div>" +
+      "<div class='detail-item'><span class='detail-lbl'>Notes</span><span class='detail-val'>"+(l.notes||"—")+"</span></div>" +
+      "<div class='detail-item'><span class='detail-lbl'>Created</span><span class='detail-val'>"+new Date(l.createdAt).toLocaleDateString()+"</span></div>";
+    document.getElementById("viewModal").classList.remove("hidden");
+  }
+  function closeView(){ document.getElementById("viewModal").classList.add("hidden"); }
+
+  /* ── EDIT (cycle status) ── */
+  function editLead(id){
+    var l = allLeads.find(function(x){return x._id===id;});
+    if(!l) return;
+    var opts=["New","Contacted","Converted"];
+    var next=opts[(opts.indexOf(l.status)+1)%opts.length];
+    if(!confirm('Update "'+l.name+'" status:\n"'+l.status+'" → "'+next+'"')) return;
+    fetch(API_BASE+"/leads/"+id,{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({status:next})
+    })
+    .then(function(){ loadLeads(); showToast('Status → "'+next+'" ✓'); })
+    .catch(function(){ showToast("Update failed","error"); });
+  }
+
+  /* ── CLOSE ON BG CLICK ── */
+  function closeOnBg(e, modalId){
+    if(e.target.id===modalId){
+      document.getElementById(modalId).classList.add("hidden");
+    }
+  }
+
+  loadLeads();
+</script>
+</body>
+</html>

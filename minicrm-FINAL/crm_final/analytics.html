@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini CRM – Analytics</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">⚡ Mini<span>CRM</span></div>
+  <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+  <a class="nav-link" href="leads.html">👥 Leads</a>
+  <a class="nav-link active" href="analytics.html">📈 Analytics</a>
+  <a class="nav-link" href="settings.html">⚙️ Settings</a>
+  <div class="sidebar-spacer"></div>
+  <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="main">
+
+  <div class="welcome">
+    <div class="page-title">Analytics Dashboard</div>
+    <div class="page-sub">Monitor lead performance and business growth.</div>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card"><div class="card-label">Total Leads</div><div class="card-value" id="totalLeads" style="color:var(--purple-lt)">—</div></div>
+    <div class="card"><div class="card-label">Contacted</div><div class="card-value" id="contactedLeads" style="color:#fcd34d">—</div></div>
+    <div class="card"><div class="card-label">Converted</div><div class="card-value" id="convertedLeads" style="color:#4ade80">—</div></div>
+    <div class="card"><div class="card-label">Conversion Rate</div><div class="card-value" id="convRate" style="color:var(--purple-lt)">—</div></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card"><div class="card-label">Lead Status Distribution</div><canvas id="statusChart" style="max-height:260px;margin-top:12px"></canvas></div>
+    <div class="card"><div class="card-label">Lead Sources</div><canvas id="sourceChart" style="max-height:260px;margin-top:12px"></canvas></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-label">Monthly Lead Growth</div>
+    <canvas id="growthChart" style="max-height:280px;margin-top:12px"></canvas>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card"><div class="card-label">Performance</div><div class="card-value" style="font-size:1.1rem">🚀 Excellent</div></div>
+    <div class="card"><div class="card-label">Database</div><div class="card-value" style="font-size:1.1rem">🍃 MongoDB</div></div>
+    <div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:1.1rem">⚡ Express</div></div>
+    <div class="card"><div class="card-label">Engine</div><div class="card-value" style="font-size:1.1rem">📈 Live</div></div>
+  </div>
+
+  <div class="footer">Mini CRM Analytics © 2026</div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+  requireAuth();
+
+  var CHART_COLORS = { text:"#6b6b8a", grid:"rgba(255,255,255,0.05)", bg:"#11111a" };
+
+  function chartDefaults(){
+    return {
+      responsive:true,
+      plugins:{ legend:{ labels:{ color:"#a0a0c0", font:{ family:"'DM Sans'" } } } },
+      scales:{
+        x:{ ticks:{ color:CHART_COLORS.text }, grid:{ color:CHART_COLORS.grid } },
+        y:{ ticks:{ color:CHART_COLORS.text }, grid:{ color:CHART_COLORS.grid } }
+      }
+    };
+  }
+
+  fetch(API_BASE+"/leads")
+    .then(function(r){ return r.json(); })
+    .then(function(leads){
+      var n=0,c=0,cv=0;
+      var srcMap={}, growth=new Array(12).fill(0);
+      leads.forEach(function(l){
+        if(l.status==="New")       n++;
+        if(l.status==="Contacted") c++;
+        if(l.status==="Converted") cv++;
+        var src=l.source||"Unknown";
+        srcMap[src]=(srcMap[src]||0)+1;
+        if(l.createdAt) growth[new Date(l.createdAt).getMonth()]++;
+      });
+      var total=leads.length;
+      document.getElementById("totalLeads").innerText     = total;
+      document.getElementById("contactedLeads").innerText = c;
+      document.getElementById("convertedLeads").innerText = cv;
+      document.getElementById("convRate").innerText       = total?((cv/total*100).toFixed(1)+"%"):"0%";
+
+      /* doughnut */
+      new Chart(document.getElementById("statusChart"),{
+        type:"doughnut",
+        data:{ labels:["New","Contacted","Converted"],
+          datasets:[{ data:[n,c,cv], backgroundColor:["#3b82f6","#f59e0b","#22c55e"], borderColor:"#11111a", borderWidth:3 }] },
+        options:{ responsive:true, plugins:{ legend:{ labels:{ color:"#a0a0c0", font:{ family:"'DM Sans'" } } } } }
+      });
+
+      /* bar */
+      new Chart(document.getElementById("sourceChart"),{
+        type:"bar",
+        data:{ labels:Object.keys(srcMap),
+          datasets:[{ label:"Leads", data:Object.values(srcMap),
+            backgroundColor:"rgba(124,58,237,.7)", borderColor:"#7c3aed", borderWidth:1, borderRadius:6 }] },
+        options:chartDefaults()
+      });
+
+      /* line */
+      new Chart(document.getElementById("growthChart"),{
+        type:"line",
+        data:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+          datasets:[{ label:"Lead Growth", data:growth,
+            borderColor:"#a855f7", backgroundColor:"rgba(168,85,247,.12)",
+            fill:true, tension:0.4, pointBackgroundColor:"#a855f7", pointBorderColor:"#11111a", pointBorderWidth:2, pointRadius:5 }] },
+        options:chartDefaults()
+      });
+    })
+    .catch(function(){ showToast("Backend offline","error"); });
+</script>
+</body>
+</html>

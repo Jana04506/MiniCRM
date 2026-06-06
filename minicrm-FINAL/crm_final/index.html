@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini CRM – Login</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>⚡ Mini CRM</h1>
+    <p class="auth-desc">Professional Lead Management System</p>
+
+    <div class="tabs">
+      <button class="tab active" id="loginTab" onclick="showLogin()">Login</button>
+      <button class="tab" id="signupTab" onclick="showSignup()">Sign Up</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <input type="text"     id="username" placeholder="Username" autocomplete="username">
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+      <button class="auth-btn" onclick="doLogin()">Login →</button>
+      <p class="auth-note">No account? <a href="#" onclick="showSignup()">Sign Up</a></p>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signupForm" class="hidden">
+      <input type="text"     id="sName"     placeholder="Full Name">
+      <input type="email"    id="sEmail"    placeholder="Email Address">
+      <input type="text"     id="sUsername" placeholder="Username" autocomplete="username">
+      <input type="password" id="sPassword" placeholder="Password" autocomplete="new-password">
+      <button class="auth-btn" onclick="doSignup()">Create Account →</button>
+      <p class="auth-note">Have an account? <a href="#" onclick="showLogin()">Login</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+  /* redirect if already logged in */
+  if (localStorage.getItem("loggedIn") === "true") {
+    window.location.href = "dashboard.html";
+  }
+
+  function showLogin() {
+    document.getElementById("loginForm").classList.remove("hidden");
+    document.getElementById("signupForm").classList.add("hidden");
+    document.getElementById("loginTab").classList.add("active");
+    document.getElementById("signupTab").classList.remove("active");
+  }
+
+  function showSignup() {
+    document.getElementById("signupForm").classList.remove("hidden");
+    document.getElementById("loginForm").classList.add("hidden");
+    document.getElementById("signupTab").classList.add("active");
+    document.getElementById("loginTab").classList.remove("active");
+  }
+
+  function doLogin() {
+    var u = document.getElementById("username").value.trim();
+    var p = document.getElementById("password").value.trim();
+    if (!u || !p) { showToast("Enter username & password", "error"); return; }
+
+    fetch(API_BASE + "/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u, password: p })
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        localStorage.setItem("loggedIn",    "true");
+        localStorage.setItem("userName",    res.d.user.name);
+        localStorage.setItem("userUsername",res.d.user.username);
+        showToast("Login Successful ✓");
+        setTimeout(function () { window.location.href = "dashboard.html"; }, 900);
+      } else {
+        showToast(res.d.message || "Login failed", "error");
+      }
+    })
+    .catch(function () { showToast("Cannot connect to backend (port 5000)", "error"); });
+  }
+
+  function doSignup() {
+    var name = document.getElementById("sName").value.trim();
+    var email= document.getElementById("sEmail").value.trim();
+    var user = document.getElementById("sUsername").value.trim();
+    var pass = document.getElementById("sPassword").value.trim();
+    if (!name||!email||!user||!pass) { showToast("Fill all fields", "error"); return; }
+
+    fetch(API_BASE + "/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, email: email, username: user, password: pass })
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        showToast("Account created ✓ — Login now");
+        setTimeout(showLogin, 1200);
+      } else {
+        showToast(res.d.message || "Signup failed", "error");
+      }
+    })
+    .catch(function () { showToast("Cannot connect to backend (port 5000)", "error"); });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    if (!document.getElementById("loginForm").classList.contains("hidden")) doLogin();
+    else doSignup();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini CRM – Settings</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">⚡ Mini<span>CRM</span></div>
+  <a class="nav-link" href="dashboard.html">📊 Dashboard</a>
+  <a class="nav-link" href="leads.html">👥 Leads</a>
+  <a class="nav-link" href="analytics.html">📈 Analytics</a>
+  <a class="nav-link active" href="settings.html">⚙️ Settings</a>
+  <div class="sidebar-spacer"></div>
+  <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="main">
+
+  <div class="welcome">
+    <div class="page-title">Settings</div>
+    <div class="page-sub">Manage your profile, security and CRM preferences.</div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card settings-section">
+      <h3>👤 Profile Information</h3>
+      <div class="info-row"><span class="info-lbl">Name</span><span class="info-val" id="pName">—</span></div>
+      <div class="info-row"><span class="info-lbl">Username</span><span class="info-val" id="pUsername">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Account Status</div>
+      <div class="card-value" style="font-size:1.2rem;margin-top:14px">🟢 Active</div>
+    </div>
+  </div>
+
+  <div class="card settings-section" style="margin-bottom:20px">
+    <h3>🔒 Change Password</h3>
+    <input type="password" id="oldPw" placeholder="Current Password">
+    <input type="password" id="newPw" placeholder="New Password">
+    <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+  </div>
+
+  <div class="card settings-section" style="margin-bottom:20px">
+    <h3>🎨 Appearance</h3>
+    <p id="themeLabel" style="color:var(--muted);margin-bottom:14px">Dark Theme Enabled</p>
+    <button class="btn btn-success" onclick="toggleTheme()">Toggle Theme</button>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card"><div class="card-label">Version</div><div class="card-value" style="font-size:1.2rem">2.0</div></div>
+    <div class="card"><div class="card-label">Database</div><div class="card-value" style="font-size:1.2rem">🍃 MongoDB</div></div>
+    <div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:1.2rem">⚡ Express</div></div>
+    <div class="card"><div class="card-label">Frontend</div><div class="card-value" style="font-size:1.2rem">🚀 Vanilla JS</div></div>
+  </div>
+
+  <div class="card settings-section" style="margin-top:20px">
+    <h3>⚙️ Preferences</h3>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <label><input type="checkbox" checked> Email Notifications</label>
+      <label><input type="checkbox" checked> CRM Activity Alerts</label>
+    </div>
+  </div>
+
+  <div class="footer">Mini CRM Settings © 2026</div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+  requireAuth();
+
+  document.getElementById("pName").innerText     = localStorage.getItem("userName")     || "Admin";
+  document.getElementById("pUsername").innerText = localStorage.getItem("userUsername") || "admin";
+
+  function changePassword(){
+    var op = document.getElementById("oldPw").value;
+    var np = document.getElementById("newPw").value;
+    if(!op||!np){ showToast("Fill both password fields","error"); return; }
+    if(np.length<4){ showToast("New password too short","error"); return; }
+    showToast("Password Updated ✓");
+    document.getElementById("oldPw").value="";
+    document.getElementById("newPw").value="";
+  }
+
+  function toggleTheme(){
+    document.body.classList.toggle("light-theme");
+    var on = document.body.classList.contains("light-theme");
+    document.getElementById("themeLabel").innerText = on ? "Light Theme Enabled" : "Dark Theme Enabled";
+    showToast((on?"Light":"Dark")+" Theme Activated");
+  }
+</script>
+</body>
+</html>
